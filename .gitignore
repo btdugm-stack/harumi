@@ -1,6 +1,8 @@
-/storage/orders.json
-/.idea/
-/.vscode/
-/.DS_Store
-Thumbs.db
+node_modules/
+.wrangler/
+.dev.vars
 *.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

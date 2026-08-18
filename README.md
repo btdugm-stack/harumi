@@ -1,63 +1,52 @@
-# Harumi Digital Ordering - Laragon Edition
+# Harumi Digital Ordering — Cloudflare Workers
 
-Proof of concept website pemasaran dan pemesanan Harumi yang dibuat dengan PHP native, CSS, dan JavaScript. Tidak memerlukan Composer, npm, framework, atau database.
-
-## Persyaratan
-
-- Laragon dengan PHP 8.1 atau lebih baru
-- Ekstensi PHP `mbstring` (aktif secara default pada Laragon)
-- Koneksi internet untuk memuat foto produk representatif dari Unsplash
-
-## Instalasi di Laragon
-
-1. Salin folder `harumi-laragon` ke `C:\laragon\www\`.
-2. Jalankan Laragon dan klik **Start All**.
-3. Klik **Menu > www > harumi-laragon**, atau buka:
-   - `http://harumi-laragon.test` jika Auto Virtual Hosts aktif; atau
-   - `http://localhost/harumi-laragon`.
-4. Aplikasi langsung dapat digunakan tanpa proses instalasi tambahan.
-
-## Konfigurasi
-
-Edit `config/app.php` untuk mengubah:
-
-- nomor WhatsApp merchant;
-- ongkos delivery;
-- jam operasional;
-- alamat outlet.
-
-Data menu dan harga berada di `data/menu.php`.
-
-## Penyimpanan pesanan
-
-Pesanan disimpan oleh PHP ke `storage/orders.json`. File tersebut sengaja diabaikan Git agar data pelanggan tidak ikut ter-commit.
-
-Harga dan total dihitung ulang pada server agar nilai dari browser tidak dapat dimanipulasi langsung.
+Website pemasaran dan pemesanan Harumi. Versi Cloudflare Workers: halaman di-render di edge, aset statis disajikan langsung, dan pesanan disimpan di Workers KV. Tidak ada server, tidak ada PHP, tidak ada database tradisional.
 
 ## Struktur proyek
 
 ```text
-harumi-laragon/
-├── api/orders.php       Endpoint penyimpanan pesanan
-├── assets/css/style.css Tampilan responsif
-├── assets/img/          Aset lokal
-├── assets/js/app.js     Katalog, cart, dan checkout
-├── config/app.php       Konfigurasi merchant
-├── data/menu.php        Master menu dan harga
-├── storage/             Pesanan lokal
-└── index.php            Halaman utama
+harumi/
+├── src/index.js        Entry Worker: routing / , /api/orders, fallback aset
+├── src/template.js     Render halaman utama (padanan index.php)
+├── src/orders.js       Endpoint pesanan + validasi harga server-side (padanan api/orders.php)
+├── src/menu.js         Master menu dan harga (57 item)
+├── src/config.js       Konfigurasi merchant (WhatsApp, ongkir, jam, alamat)
+├── public/assets/      Aset statis: css, js (frontend), img
+├── package.json        Script: npm run dev / npm run deploy
+└── wrangler.toml       Konfigurasi Worker + binding KV
 ```
 
-## Git
-
-Repository sudah diinisialisasi dan memiliki initial commit. Untuk menghubungkan ke GitHub/GitLab:
+## Menjalankan lokal
 
 ```bash
-git remote add origin URL_REPOSITORY_ANDA
-git branch -M main
-git push -u origin main
+npm install
+npm run dev        # http://127.0.0.1:8787 — KV diemulasikan lokal
 ```
 
-## Catatan produksi
+## Deploy ke Cloudflare
 
-Versi ini cocok untuk demo dan operasional sederhana di satu mesin. Untuk penggunaan multi-outlet atau banyak pengguna, lanjutkan dengan database MySQL, autentikasi admin, manajemen stok, payment gateway, dan HTTPS.
+1. `npx wrangler login` (browser → pilih akun → Allow).
+2. Buat KV namespace: `npx wrangler kv namespace create ORDERS`.
+3. Tempel `id` hasil perintah itu ke `wrangler.toml` (ganti `REPLACE_WITH_KV_NAMESPACE_ID`).
+4. `npm run deploy` → URL: `https://harumi.<subdomain-kamu>.workers.dev`.
+
+Detail lengkap di [DEPLOY.md](DEPLOY.md).
+
+## Konfigurasi
+
+- WhatsApp merchant, ongkos delivery, jam operasional, alamat → `src/config.js`.
+- Menu dan harga → `src/menu.js` (harga dihitung ulang di edge; nilai dari browser tidak dipercaya).
+
+## Penyimpanan pesanan
+
+Pesanan disimpan ke Workers KV dengan key `order:<kode>` (mis. `order:HRM-260818-D4FD`). KV tidak punya file system — karenanya storage/orders.json versi PHP digantikan KV.
+
+## Catatan migrasi dari versi Laragon (PHP)
+
+- `index.php` → `src/template.js` (render server-side di edge).
+- `api/orders.php` → `src/orders.js` (validasi + simpan ke KV).
+- `data/menu.php` → `src/menu.js` (di-generate dari data PHP asli).
+- `config/app.php` → `src/config.js`.
+- Frontend (`public/assets/js/app.js`) tidak berubah kecuali URL fetch: `api/orders.php` → `/api/orders`.
+- Bug `$notes` tanpa kategori Dessert (versi PHP) sudah diperbaiki di port ini.
+- Riwayat versi PHP tetap ada di git history (commit `237e571`).

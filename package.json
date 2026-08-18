@@ -1,0 +1,14 @@
+{
+  "name": "harumi-worker",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Harumi Digital Ordering — Cloudflare Workers port (HTML + API + KV)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
